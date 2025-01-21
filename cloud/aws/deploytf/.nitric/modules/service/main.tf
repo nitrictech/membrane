@@ -10,18 +10,19 @@ terraform {
 # Create an ECR repository
 resource "aws_ecr_repository" "repo" {
   name = var.service_name
+  force_delete = true
 }
 
 data "aws_ecr_authorization_token" "ecr_auth" {
 }
 
-data "docker_image" "latest" {
-  name = var.image
-}
+# data "docker_image" "latest" {
+#   name = var.image
+# }
 
 # Tag the provided docker image with the ECR repository url
 resource "docker_tag" "tag" {
-  source_image = data.docker_image.latest.repo_digest
+  source_image = var.image
   target_image = aws_ecr_repository.repo.repository_url
 }
 

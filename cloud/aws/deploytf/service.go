@@ -26,11 +26,11 @@ import (
 )
 
 func (a *NitricAwsTerraformProvider) Service(stack cdktf.TerraformStack, name string, config *deploymentspb.Service, runtimeProvider provider.RuntimeProvider) error {
+	targetImageName := fmt.Sprintf("%s-%s", name, a.StackName)
 	imageId, err := image.BuildWrappedImage(&image.BuildWrappedImageArgs{
 		ServiceName: name,
 		SourceImage: config.GetImage().Uri,
-		// TODO: Use correct image uri
-		TargetImage: name,
+		TargetImage: targetImageName,
 		Runtime:     runtimeProvider(),
 	})
 	if err != nil {
@@ -72,6 +72,16 @@ func (a *NitricAwsTerraformProvider) Service(stack cdktf.TerraformStack, name st
 		Memory:           jsii.Number(typeConfig.Lambda.Memory),
 		Timeout:          jsii.Number(typeConfig.Lambda.Timeout),
 		EphemeralStorage: jsii.Number(typeConfig.Lambda.EphemeralStorage),
+	}
+
+	if a.Vpc != nil && typeConfig.Lambda.Vpc != nil {
+		// conflicting VPC requirements produce an error
+		return fmt.Errorf("VPC requirements are conflicting, cannot have both a global VPC and a service specific VPC. If this is a requirement for your project please raise an issue at https://github.comm/nitrictech/nitric/issues")
+	}
+
+	if typeConfig.Lambda.Vpc != nil {
+		serviceConfig.SubnetIds = jsii.Strings(typeConfig.Lambda.Vpc.SubnetIds...)
+		serviceConfig.SecurityGroupIds = jsii.Strings(typeConfig.Lambda.Vpc.SecurityGroupIds...)
 	}
 
 	if a.Vpc != nil && a.Rds != nil {
